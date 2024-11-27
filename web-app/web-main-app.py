@@ -38,40 +38,47 @@ if "flag_anim" not in st.session_state:
 
 if not st.session_state["flag_anim"]:
     if "flag_ve_ban_do" not in st.session_state or not st.session_state["flag_ve_ban_do"]:
+        # Vẽ bản đồ lần đầu hoặc khi bản đồ thay đổi
         st.session_state["flag_ve_ban_do"] = True
         fig = ve_ban_do(graph_dict, map_locations, city_name, xmin, xmax, ymin, ymax)
         st.session_state['fig'] = fig
         st.pyplot(fig)
     else:
+        # Hiển thị bản đồ đã vẽ
         st.pyplot(st.session_state['fig'])
 
-    # Hiển thị hai selectbox trên cùng một hàng
+    # Hiển thị hai selectbox trên cùng một hàng để chọn thành phố bắt đầu và kết thúc
     col1, col2 = st.columns(2)
     with col1:
         start_city = st.selectbox('Thành phố bắt đầu:', lst_city)
     with col2:
         dest_city = st.selectbox('Thành phố đích:', lst_city)
 
+    # Chọn thuật toán tìm đường
     selected_algorithm = st.selectbox('Chọn thuật toán:', ['A*', 'Breadth-First Search', 'Depth-First Search'])
 
     st.session_state['start_city'] = start_city
     st.session_state['dest_city'] = dest_city
 
+    # Xử lý nút Direction để tìm và hiển thị đường đi
     if st.button('Direction'):
         problem = GraphProblem(start_city, dest_city, current_map)
         solution = run_algorithm(problem, selected_algorithm)
         if solution:
+            # Lấy đường đi từ kết quả giải bài toán
             lst_path = solution.path()
             path_locations = {data.state: map_locations[data.state] for data in lst_path}
             lst_path_location_x = [path_locations[city][0] for city in path_locations]
             lst_path_location_y = [path_locations[city][1] for city in path_locations]
 
+            # Vẽ lại bản đồ với đường đi được hiển thị
             fig = ve_ban_do(graph_dict, map_locations, city_name, xmin, xmax, ymin, ymax, start_city, dest_city)
             ax = fig.gca()
             ax.plot(lst_path_location_x, lst_path_location_y, 'r-', linewidth=2)
             st.session_state['fig'] = fig
             st.rerun()
 
+    # Xử lý nút Run để mô phỏng chuyển động trên đường đi
     if st.button('Run'):
         problem = GraphProblem(start_city, dest_city, current_map)
         solution = run_algorithm(problem, selected_algorithm)
@@ -81,10 +88,12 @@ if not st.session_state["flag_anim"]:
             lst_path_location_x = [path_locations[city][0] for city in path_locations]
             lst_path_location_y = [path_locations[city][1] for city in path_locations]
 
+            # Vẽ lại bản đồ với đường đi được hiển thị
             fig = ve_ban_do(graph_dict, map_locations, city_name, xmin, xmax, ymin, ymax, start_city, dest_city)
             ax = fig.gca()
             ax.plot(lst_path_location_x, lst_path_location_y, 'r-', linewidth=2)
 
+            # Tạo danh sách vị trí để mô phỏng chuyển động
             lst_vi_tri = []
             for i in range(len(lst_path_location_x) - 1):
                 x1, y1 = lst_path_location_x[i], lst_path_location_y[i]
@@ -92,6 +101,7 @@ if not st.session_state["flag_anim"]:
                 b, a = y2 - y1, x2 - x1
                 lst_vi_tri.extend([ve_mui_ten(b, a, x1 + t * (x2 - x1), y1 + t * (y2 - y1), selected_map) for t in np.linspace(0, 1, 10)])
 
+            # Tạo đối tượng polygon đỏ để mô phỏng mũi tên di chuyển
             red_polygon, = ax.fill([], [], color='red')
 
             def init():
@@ -102,13 +112,16 @@ if not st.session_state["flag_anim"]:
                 red_polygon.set_xy(lst_vi_tri[i])
                 return red_polygon,
 
+            # Tạo hoạt ảnh sử dụng FuncAnimation
             anim = FuncAnimation(fig, animate, frames=len(lst_vi_tri), init_func=init, repeat=False)
             st.session_state["flag_anim"] = True
             st.session_state['anim'] = anim
             st.rerun()
 else:
+    # Hiển thị hoạt ảnh đã tạo
     if st.session_state["flag_anim"]:
         components.html(st.session_state["anim"].to_jshtml(), height=550)
+        # Xử lý nút Reset để thiết lập lại trạng thái
         if st.button('Reset'):
             st.session_state["flag_anim"] = False
             st.session_state["flag_ve_ban_do"] = False

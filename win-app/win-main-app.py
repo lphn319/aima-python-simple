@@ -9,7 +9,6 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-
 class App(tk.Tk): 
     def __init__(self):
         super().__init__()
@@ -64,6 +63,11 @@ class App(tk.Tk):
         lbl_frm_menu.grid(row=0, column=1, padx=5, pady=7, sticky=tk.N)
 
     def on_canvas_click(self, event):
+        """
+        Hàm xử lý khi người dùng nhấn vào bản đồ trên giao diện.
+        - Lấy vị trí của nhấn chuột và xác định thành phố gần nhất.
+        - Nếu đang chọn điểm bắt đầu, cập nhật `start`, nếu không thì cập nhật `dest`.
+        """
         clicked_point = (event.x, event.y)
         closest_city = min(self.scaled_locations, key=lambda city: self.distance(self.scaled_locations[city], clicked_point))
 
@@ -82,9 +86,19 @@ class App(tk.Tk):
         self.draw_map()
 
     def distance(self, loc1, loc2):
+        """
+        Tính toán khoảng cách Euclidean giữa hai điểm `loc1` và `loc2`.
+        Công thức: sqrt((x1 - x2)^2 + (y1 - y2)^2)
+        - Đây là công thức khoảng cách Euclidean chuẩn trong hình học để tính khoảng cách giữa hai điểm trong không gian hai chiều.
+        """
         return np.sqrt((loc1[0] - loc2[0]) ** 2 + (loc1[1] - loc2[1]) ** 2)
 
     def change_map(self, *args):
+        """
+        Hàm thay đổi bản đồ khi người dùng chọn bản đồ khác từ danh sách combobox.
+        - Cập nhật bản đồ hiện tại và danh sách thành phố.
+        - Vẽ lại bản đồ mới.
+        """
         self.current_map_key = self.cbo_map.get()
         self.current_map, self.locations, self.city_name = maps[self.current_map_key]
         self.scaled_locations = scale_locations(self.locations)
@@ -94,6 +108,9 @@ class App(tk.Tk):
         self.draw_map()
 
     def update_city_list(self):
+        """
+        Cập nhật danh sách thành phố trong combobox khi người dùng chọn bản đồ khác.
+        """
         lst_city = list(self.city_name.keys())
         self.cbo_start['values'] = lst_city
         self.cbo_dest['values'] = lst_city
@@ -101,15 +118,29 @@ class App(tk.Tk):
         self.cbo_dest.set(lst_city[0])
 
     def cbo_start_click(self, *args):
+        """
+        Hàm xử lý khi người dùng chọn điểm bắt đầu từ combobox.
+        """
         self.start = self.cbo_start.get()
 
     def cbo_dest_click(self, *args):
+        """
+        Hàm xử lý khi người dùng chọn điểm kết thúc từ combobox.
+        """
         self.dest = self.cbo_dest.get()
 
     def draw_map(self):
+        """
+        Vẽ bản đồ và các thành phố lên giao diện.
+        """
         draw_map(self.cvs_map, self.current_map, self.locations, self.city_name, self.start, self.dest, self.scaled_locations)
 
     def btn_direction_click(self):
+        """
+        Hàm xử lý khi người dùng nhấn nút "Direction" để tìm đường đi giữa hai điểm bắt đầu và kết thúc.
+        - Sử dụng thuật toán tìm kiếm được chọn để tìm đường đi.
+        - Vẽ lại bản đồ với đường đi được đánh dấu.
+        """
         self.cvs_map.delete(tk.ALL)
         self.draw_map()
         problem = GraphProblem(self.start, self.dest, self.current_map)
@@ -139,6 +170,13 @@ class App(tk.Tk):
             self.cvs_map.create_oval(dest_x - 6, dest_y - 6, dest_x + 6, dest_y + 6, fill='#00FF00', outline='#00FF00')
 
     def btn_run_click(self):
+        """
+        Hàm xử lý khi người dùng nhấn nút "Run" để mô phỏng chuyển động giữa các điểm trên đường đi.
+        - Sử dụng vòng lặp để vẽ từng bước di chuyển giữa các thành phố trên đường đi.
+        - Công thức tính khoảng cách d1: d1 = sqrt((x1 - x0)^2 + (y1 - y0)^2) để tính khoảng cách giữa hai điểm.
+        - Số bước chuyển động N1: N1 = int(N * d1 / d), điều này giúp điều chỉnh số bước di chuyển tỉ lệ với khoảng cách giữa các điểm.
+        - Công thức tính vị trí trung gian x, y: x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t, với t thay đổi từ 0 đến 1 để di chuyển từ điểm đầu đến điểm cuối.
+        """
         bg_color = self.cvs_map['background']
         N, d = 21, 100
         L = len(self.path_location)
@@ -161,6 +199,13 @@ class App(tk.Tk):
         self.draw_arrow(y1 - y0, x1 - x0, x, y, '#FF0000')
 
     def draw_arrow(self, b, a, tx, ty, color):
+        """
+        Vẽ mũi tên để mô phỏng hướng di chuyển trên bản đồ.
+        - Sử dụng ma trận chuyển đổi để quay và tịnh tiến mũi tên.
+        - Ma trận M1: Ma trận tịnh tiến dùng để di chuyển mũi tên đến vị trí (tx, ty).
+        - Ma trận M2: Ma trận quay với góc theta = arctan(b / a) dùng để điều chỉnh hướng của mũi tên.
+        - Mũi tên được tạo ra bằng cách áp dụng phép biến đổi M = M1 * M2 lên các điểm của mũi tên ban đầu.
+        """
         arrow_points = [np.array([[0], [0], [1]], np.float32),
                         np.array([[-20], [10], [1]], np.float32),
                         np.array([[-15], [0], [1]], np.float32),
